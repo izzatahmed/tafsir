@@ -106,3 +106,55 @@ for s in range(1, 115):
 # ---------- al-Raghib: reuse the encyclopedia's file ----------
 shutil.copy('/home/claude/site77/assets/raghib.js', OUT + 'data/raghib.js')
 print('extra', len(X), 'words', nwords, 'forms', len(FORMS), 'keys', len(ROOTS), 'baydawi passages', nb, 'gharib verses', ng)
+
+# ---------- Mukhtar al-Sihah (OpenITI) : one file, entries mapped to Leeds roots ----------
+from mukhtar import parse as mparse
+ME = mparse()
+HZ = str.maketrans({'إ': 'أ', 'آ': 'أ', 'ؤ': 'أ', 'ئ': 'أ', 'ء': 'أ', 'ى': 'ي'})
+MR = collections.defaultdict(list)
+for i, e in enumerate(ME): MR[e['r'].translate(HZ)].append(i)
+def mcands(r):
+    r = r.translate(HZ); out = list(MR.get(r, []))
+    if not out and r[-1] in 'وي': out = MR.get(r[:-1] + 'ا', []) or MR.get(r[:-1] + ('ي' if r[-1] == 'و' else 'و'), [])
+    return out
+MX = {k: mcands(k) for k in roots if not k.startswith('#') and mcands(k)}
+MD = {'H': [e['h'] for e in ME], 'P': [e['p'] for e in ME], 'T': [e['t'] for e in ME], 'R': MX}
+open(OUT + 'data/mukhtar.js', 'w', encoding='utf-8').write(
+    '/* مختار الصحاح، لزين الدين محمد بن أبي بكر الرازي (ت 666هـ)، تحقيق يوسف الشيخ محمد، المكتبة العصرية، ط5 1420هـ/1999م.\n'
+    '   النص من مدونة OpenITI (0666IbnAbiBakrZaynDinRazi.MukhtarSihah.Shamela0023193-ara1) بترخيص CC BY-NC-SA 4.0، ويُنشر هذا الملف المستخرج منه بالترخيص نفسه.\n'
+    '   رُبطت المداخل بجذور مدونة القرآن العربية (جامعة ليدز) آلياً. */\nwindow.MUKHTAR=' + json.dumps(MD, ensure_ascii=False, separators=(',', ':')) + ';\n')
+tok = sum(len(v) for k, v in roots.items() if k in MX); tot = sum(len(v) for k, v in roots.items() if not k.startswith('#'))
+
+# ---------- short i'rab description per word (from Leeds tags) ----------
+from irab import describe
+DS = describe(); DU = {}; DV = []
+for s in range(1, 115):
+    sv = []
+    for a in range(1, CH[s - 1]['total_verses'] + 1):
+        row = DS[(s, a)]
+        q = json.load(open(OUT + f'data/q/{s}.json', encoding='utf-8'))[a - 1] if a == 1 else None
+        sv.append([DU.setdefault(x, len(DU)) for x in row])
+    DV.append(sv)
+for s in range(1, 115):          # word counts must match the verse files
+    q = json.load(open(OUT + f'data/q/{s}.json', encoding='utf-8'))
+    assert [len(v) for v in q] == [len(v) for v in DV[s - 1]], s
+json.dump({'D': list(DU), 'V': DV}, open(OUT + 'data/irab.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+
+# ---------- al-'Ukbari, al-Tibyan (OpenITI), chunked by surah groups ----------
+from ukbari import parse as uparse, assign as uassign
+UO, UST = uassign(uparse())
+os.makedirs(OUT + 'data/ub', exist_ok=True)
+sizes = {s: sum(len(t) for _, _, t in UO.get(s, [])) for s in range(1, 115)}
+CHUNKS = []; cur = []; acc = 0; target = sum(sizes.values()) / 12
+for s in range(1, 115):
+    cur.append(s); acc += sizes[s]
+    if acc >= target and len(CHUNKS) < 11: CHUNKS.append(cur); cur = []; acc = 0
+if cur: CHUNKS.append(cur)
+UBMAP = {}
+for i, ch in enumerate(CHUNKS):
+    json.dump({str(s): UO.get(s, []) for s in ch}, open(OUT + f'data/ub/{i + 1}.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+    for s in ch: UBMAP[s] = i + 1
+I = json.load(open(OUT + 'data/index.json', encoding='utf-8'))
+I['U'] = [UBMAP[s] for s in range(1, 115)]
+json.dump(I, open(OUT + 'data/index.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+print('mukhtar entries', len(ME), 'roots mapped', len(MX), 'token coverage', round(tok / tot, 3), '| irab unique', len(DU), '| ukbari', dict(UST), 'chunks', len(CHUNKS))
