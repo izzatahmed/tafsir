@@ -1,6 +1,6 @@
 # مفردات القرآن الكريم
 
-موقع ثابت لمعاني ألفاظ القرآن الكريم: «المفردات في غريب القرآن» للراغب الأصفهاني، ومعها لكل آية «الميسر في غريب القرآن» وتفسيران موجزان: الجلالين والبيضاوي. وهو موقع شقيق لـ[الموسوعة القرآنية المترابطة](https://izzatahmed.github.io/hypertext/).
+موقع ثابت لمعاني ألفاظ القرآن الكريم: «المفردات في غريب القرآن» للراغب الأصفهاني و«مختار الصحاح» للرازي، مع وصف إعرابي مختصر لكل كلمة، ولكل آية «الميسر في غريب القرآن» وتفسيرا الجلالين والبيضاوي و«التبيان في إعراب القرآن» للعكبري. وهو موقع شقيق لـ[الموسوعة القرآنية المترابطة](https://izzatahmed.github.io/hypertext/).
 
 A static site for the meanings of Quranic words: al-Raghib al-Isfahani's *al-Mufradat*, with a per-verse glossary of difficult words and two concise commentaries (al-Jalalayn and al-Baydawi). Sister site of the Quranic Hypertext Encyclopedia.
 
@@ -10,6 +10,7 @@ A static site for the meanings of Quranic words: al-Raghib al-Isfahani's *al-Muf
 - روابط مباشرة: `#17:64` للآية، و`#r/فزز` للجذر، و`#e/635` لمدخل عند الراغب، و`#w/كلمة` للبحث.
 
 ## النشر على GitHub Pages
+0. واجهة GitHub تقبل 100 ملف في كل رفعة، فارفع المجلدات على دفعات (مثلاً: `data/q` ثم `data/jal` ثم البقية) وتحقق أن عدد الملفات كامل.
 1. أنشئ مستودعاً جديداً (مثلاً `raghib`) وارفع إليه محتوى هذا المجلد كما هو، ومنه الملف `.nojekyll`.
 2. من Settings ← Pages اختر الفرع `main` والمجلد `/ (root)`.
 3. يظهر الموقع على `https://<اسم المستخدم>.github.io/<اسم المستودع>/`. المسارات كلها نسبية، فيعمل بأي اسم مستودع.
@@ -20,6 +21,7 @@ A static site for the meanings of Quranic words: al-Raghib al-Isfahani's *al-Muf
 - `index.html` و`assets/` : الواجهة (بلا مكتبات خارجية سوى خطوط Google).
 - `data/raghib.js` : مداخل «المفردات» مربوطة بالجذور (الملف نفسه المستعمل في الموسوعة).
 - `data/index.json` : أسماء السور، وفهرس صيغ الكلمات إلى جذورها، ومواضع كل جذر.
+- `data/mukhtar.js` : مداخل «مختار الصحاح» مربوطة بالجذور، و`data/irab.json` : الوصف الإعرابي لكل كلمة، و`data/ub/` : إعراب العكبري في 9 ملفات.
 - `data/q/` نص الآيات كلمة كلمة مع الجذر، و`data/gh/` غريب القرآن، و`data/jal/` الجلالين، و`data/bay/` البيضاوي، ملف لكل سورة يُحمَّل عند الحاجة.
 - `build/` : السكربتات التي ولّدت ملفات البيانات (للاطلاع؛ مساراتها مسارات بيئة البناء).
 
