@@ -73,3 +73,10 @@ details[open] summary{display:none}
 ul.plain{padding-inline-start:1.3rem}
 .vt{gap:.3rem}
 @media (max-width:600px){.vt button{font-size:.9rem;padding:.12rem .6rem}.verse{font-size:1.45rem}.logo{font-size:1.25rem}body{font-size:1.02rem}}
+
+.irab{background:var(--gold-soft);border-radius:10px;padding:.35rem .7rem;margin:.3rem 0 .5rem;line-height:1.9}
+.irab .plus{color:var(--gold-ink);font-weight:700;margin:0 .15rem}
+.src2{border-top:1px solid var(--border);margin-top:.8rem;padding-top:.5rem}
+.head.mk{font-size:1.1rem}
+hr.sep{border:none;border-top:1px dashed var(--border);margin:.6rem 0}
+h3{margin-top:.4rem}

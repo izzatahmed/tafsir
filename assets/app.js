@@ -29,6 +29,18 @@
     return rgP;
   }
   function miss(e) { console.warn(e); return null; }
+  var MK = null, mkP = null, IR = null, irP = null, UB = {};
+  function loadMK() {
+    if (MK) return Promise.resolve(MK); if (mkP) return mkP;
+    mkP = new Promise(function (res, rej) {
+      var s = document.createElement('script'); s.src = 'data/mukhtar.js?v=1';
+      s.onload = function () { MK = window.MUKHTAR; res(MK); }; s.onerror = function () { mkP = null; rej(new Error('mukhtar.js')); };
+      document.head.appendChild(s);
+    });
+    return mkP;
+  }
+  function loadIR() { return IR ? Promise.resolve(IR) : (irP = irP || getJSON('data/irab.json').then(function (d) { IR = d; return d; })); }
+  function loadUB(s) { var c = IDX.U[s - 1]; return UB[c] ? Promise.resolve(UB[c]) : getJSON('data/ub/' + c + '.json').then(function (d) { UB[c] = d; return d; }); }
   function part(kind, s) { return cache[kind][s] ? Promise.resolve(cache[kind][s]) : getJSON('data/' + kind + '/' + s + '.json').then(function (d) { cache[kind][s] = d; return d; }); }
 
   // surah-name lookup for references such as "[الإسراء/ 64]" and queries such as "الإسراء 64"
@@ -48,14 +60,27 @@
     if (key[0] === '#') { var l = nz(key.slice(1)); return RG.N[l] || []; }
     return RG.R[key] || [];
   }
-  function rgText(i, raw) {
-    var t = esc(raw === undefined ? RG.T[i] : raw);
-    t = t.replace(/\[([^\]\/\n]{2,24})\/\s?(\d+)(?:\s?-\s?(\d+))?\]/g, function (m, name, a, b) {
+  function rgText(i, raw) { return linkRefs(esc(raw === undefined ? RG.T[i] : raw)); }
+  function linkRefs(t) {
+    return t.replace(/\[([^\]\/:\n]{2,24})[\/:]\s?(\d+)(?:\s?-\s?(\d+))?\]/g, function (m, name, a, b) {
       var s = SN[nz(name)] || SN[nz(name).replace(/^ال/, '')];
       if (!s || +a > IDX.S[s - 1][2]) return m;
       return '[' + refLink(s, +a, b ? +b : 0) + ']';
     });
-    return t;
+  }
+  function mkHTML(i, short) {
+    var T = MK.T[i], body;
+    if (short && T.length > 700) {
+      var cut = T.indexOf('. ', 450); if (cut < 0 || cut > 800) cut = 500;
+      body = linkRefs(esc(T.slice(0, cut + 1))) + '<details><summary class="small">بقية المدخل</summary>' + linkRefs(esc(T.slice(cut + 1))) + '</details>';
+    } else body = linkRefs(esc(T));
+    body = body.replace(/\{([^}]+)\}/g, '<span class="q">﴿$1﴾</span>');
+    return '<div class="entry"><div class="head mk">' + esc(MK.H[i].replace(/ /g, '')) + ' <span class="pg">(ص ' + an(MK.P[i]) + ')</span></div><div class="txt">' + body + '</div></div>';
+  }
+  function mkFor(key) { return MK && key && key[0] !== '#' ? (MK.R[key] || []) : []; }
+  function mkSection(key, short) {
+    var M = mkFor(key); if (!M.length) return '';
+    return '<div class="src2"><h3>مختار الصحاح</h3>' + M.map(function (i) { return mkHTML(i, short); }).join('') + '</div>';
   }
   function entryHTML(i, short) {
     var T = RG.T[i], body;
@@ -86,14 +111,14 @@
     if (window.innerWidth >= 700) setTimeout(function () { try { document.getElementById('q').focus(); } catch (e) {} }, 50);
     loadIdx().then(function () {
       app.innerHTML = '<section class="card"><h1>مفردات القرآن الكريم</h1>' +
-        '<p>معاني ألفاظ القرآن الكريم من «المفردات في غريب القرآن» للراغب الأصفهاني (ت 502هـ)، ومعها لكل آية «الميسر في غريب القرآن» وتفسيران موجزان: الجلالين والبيضاوي.</p>' +
-        '<ul class="plain"><li>ابدأ الكتابة في مربع البحث فتظهر الاقتراحات مع كل حرف: كلمة كما في المصحف (يستفزونك)، أو جذرها (فزز)، أو سورة، أو موضعاً (17:64 أو الإسراء 64).</li><li>في صفحة الآية تحت الآية مباشرة أزرار: غريب الآية، ومعنى الكلمة عند الراغب، والجلالين، والبيضاوي. وانقر أي كلمة لمعناها ومواضع جذرها.</li></ul></section>' +
+        '<p>معاني ألفاظ القرآن الكريم من «المفردات في غريب القرآن» للراغب الأصفهاني (ت 502هـ)، ومن «مختار الصحاح» للرازي، مع وصف إعرابي مختصر لكل كلمة، ولكل آية «الميسر في غريب القرآن» وتفسيرا الجلالين والبيضاوي و«التبيان في إعراب القرآن» للعكبري.</p>' +
+        '<ul class="plain"><li>ابدأ الكتابة في مربع البحث فتظهر الاقتراحات مع كل حرف: كلمة كما في المصحف (يستفزونك)، أو جذرها (فزز)، أو سورة، أو موضعاً (17:64 أو الإسراء 64).</li><li>في صفحة الآية تحت الآية مباشرة أزرار: غريب الآية، ومعنى الكلمة (الراغب ومختار الصحاح والوصف الإعرابي)، والجلالين، والبيضاوي، وإعراب العكبري. وانقر أي كلمة لمعناها ومواضع جذرها.</li></ul></section>' +
         '<section class="card"><h2>السور</h2><div class="grid">' + IDX.S.map(function (x, i) { return '<a href="#' + (i + 1) + ':1">' + an(i + 1) + '. ' + esc(x[0]) + ' <span>' + an(x[2]) + '</span></a>'; }).join('') + '</div></section>';
     }).catch(fail);
   }
 
   var V = null;   // current verse state
-  var TABS = [['gh', 'غريب الآية'], ['word', 'معنى الكلمة'], ['jal', 'الجلالين'], ['bay', 'البيضاوي']];
+  var TABS = [['gh', 'غريب الآية'], ['word', 'معنى الكلمة'], ['jal', 'الجلالين'], ['bay', 'البيضاوي'], ['ub', 'إعراب العكبري']];
   function verse(s, a) {
     loadIdx().then(function () {
       var n = IDX.S[s - 1][2]; a = Math.max(1, Math.min(n, a));
@@ -128,8 +153,9 @@
   function markWord() { app.querySelectorAll('.w').forEach(function (b) { b.classList.toggle('on', +b.dataset.i === V.wi); }); }
   function pane(t) {
     app.querySelectorAll('.vt button').forEach(function (x) { x.setAttribute('aria-selected', x.dataset.t === t); });
-    var el = document.getElementById('pane'); el.className = t === 'bay' ? 'scroll' : ''; el.scrollTop = 0;
+    var el = document.getElementById('pane'); el.className = t === 'bay' || t === 'ub' ? 'scroll' : ''; el.scrollTop = 0;
     if (t === 'gh') return ghPane(el);
+    if (t === 'ub') return ubPane(el);
     if (t === 'word') return wordPane(el);
     return tafsir(V.s, V.a, t, V.jal, el);
   }
@@ -144,14 +170,38 @@
   }
   function wordPane(el) {
     if (V.wi < 0) { el.innerHTML = '<p class="muted">انقر كلمة من الآية.</p>'; return; }
-    var w = V.words[V.wi], key = w[1], E = entriesFor(key);
-    var html = '<h2>' + esc(w[0]) + '</h2>';
+    var w = V.words[V.wi], key = w[1], E = entriesFor(key), wi = V.wi, s = V.s, a = V.a;
+    var html = '<h2>' + esc(w[0]) + '</h2><p class="irab" id="irab"><span class="muted small">الوصف الإعرابي…</span></p>';
     if (!key) html += '<p class="muted">لا جذر لهذه الكلمة في مدونة ليدز (حرف أو أداة).</p>';
     else {
       html += '<p class="muted">' + esc(keyLabel(key)) + ' — <a href="#r/' + encodeURIComponent(key) + '">مواضعه في القرآن الكريم</a></p>';
-      html += E.length ? E.map(function (i) { return entryHTML(i, true); }).join('') : '<p class="muted">لا مدخل لهذا ' + (key[0] === '#' ? 'اللفظ' : 'الجذر') + ' في «المفردات».</p>';
+      html += '<h3>المفردات للراغب</h3>' + (E.length ? E.map(function (i) { return entryHTML(i, true); }).join('') : '<p class="muted">لا مدخل لهذا ' + (key[0] === '#' ? 'اللفظ' : 'الجذر') + ' في «المفردات».</p>');
+      html += '<div id="mk"></div>';
     }
     el.innerHTML = html;
+    loadIR().then(function (d) {
+      var x = document.getElementById('irab'); if (!x || !V || V.wi !== wi || V.s !== s || V.a !== a) return;
+      var idx = d.V[s - 1][a - 1][wi];
+      x.innerHTML = '<strong>الوصف الإعرابي:</strong> ' + esc(d.D[idx]).replace(/ \+ /g, ' <span class="plus">+</span> ') + ' <span class="muted small">(آلي من مدونة ليدز)</span>';
+    }).catch(function (e) { console.warn(e); var x = document.getElementById('irab'); if (x) x.innerHTML = ''; });
+    if (key && key[0] !== '#') loadMK().then(function () {
+      var x = document.getElementById('mk'); if (!x || !V || V.wi !== wi || V.s !== s || V.a !== a) return;
+      x.innerHTML = mkSection(key, true) || '<div class="src2"><h3>مختار الصحاح</h3><p class="muted">لا مدخل لهذا الجذر في «مختار الصحاح».</p></div>';
+    }).catch(function (e) { console.warn(e); });
+  }
+  function ubPane(el) {
+    el.innerHTML = '<p class="loading">جارٍ تحميل إعراب العكبري…</p>';
+    var s = V.s, a = V.a;
+    loadUB(s).then(function (d) {
+      if (!V || V.s !== s || V.a !== a || el.className !== 'scroll') return;
+      var secs = (d[String(s)] || []).filter(function (x) { return x[0] <= a && a <= x[1]; });
+      var head = '<div class="muted small">التبيان في إعراب القرآن، لأبي البقاء العكبري</div>';
+      if (!secs.length) { el.innerHTML = head + '<p class="muted">لم يقف العكبري عند هذه الآية.</p>'; return; }
+      el.innerHTML = head + secs.map(function (x) {
+        var note = x[0] !== x[1] ? '<p class="muted small">هذا الموضع يشمل الآيات ' + an(x[0]) + '–' + an(x[1]) + '.</p>' : '';
+        return note + '<div class="txt ub">' + linkRefs(esc(x[2])).replace(/\(([^()]{1,80})\)/g, '<span class="q">($1)</span>') + '</div>';
+      }).join('<hr class="sep">');
+    }).catch(function (e) { console.warn(e); el.innerHTML = '<p class="muted">تعذّر تحميل إعراب العكبري لهذه السورة.</p>'; });
   }
   function tafsir(s, a, t, jal, el) {
     if (t === 'jal' && !jal) { el.innerHTML = '<p class="muted">تعذّر تحميل تفسير الجلالين لهذه السورة.</p>'; return; }
@@ -173,10 +223,10 @@
   }
 
   function rootView(key) {
-    Promise.all([loadIdx(), loadRG()]).then(function () {
+    Promise.all([loadIdx(), loadRG(), loadMK().catch(miss)]).then(function () {
       document.title = keyLabel(key) + ' | مفردات القرآن الكريم';
       var E = entriesFor(key);
-      app.innerHTML = '<section class="card"><h1>' + esc(keyLabel(key)) + '</h1>' + (E.length ? E.map(entryHTML).join('') : '<p class="muted">لا مدخل له في «المفردات».</p>') + '</section>' +
+      app.innerHTML = '<section class="card"><h1>' + esc(keyLabel(key)) + '</h1><h3>المفردات للراغب</h3>' + (E.length ? E.map(function (i) { return entryHTML(i); }).join('') : '<p class="muted">لا مدخل له في «المفردات».</p>') + mkSection(key, false) + '</section>' +
         '<section class="card"><h2>المواضع</h2>' + (refsHTML(key, 0) || '<p class="muted">لا مواضع.</p>') + '</section>';
     }).catch(fail);
   }
@@ -194,7 +244,7 @@
 
   var PREF = ['وال', 'فال', 'بال', 'كال', 'لل', 'ال', 'و', 'ف', 'ب', 'ل', 'ك', 'س'];
   function search(raw) {
-    Promise.all([loadIdx(), loadRG()]).then(function () {
+    Promise.all([loadIdx(), loadRG(), loadMK().catch(miss)]).then(function () {
       var q = raw.trim(); if (!q) return home();
       var m = q.match(/^(\d{1,3})\s*[:：\/ ]\s*(\d{1,3})$/);
       if (m) { location.hash = '#' + m[1] + ':' + m[2]; return; }
@@ -218,7 +268,7 @@
       var html = '<section class="card"><h1>«' + esc(q) + '»</h1>' + (how ? '<p class="muted">وُجدت: ' + esc(how) + '.</p>' : '') + '</section>';
       keys.slice(0, 4).forEach(function (k) {
         var E = entriesFor(k);
-        html += '<section class="card"><h2>' + esc(keyLabel(k)) + '</h2>' + (E.length ? E.map(entryHTML).join('') : '<p class="muted">لا مدخل له في «المفردات».</p>') + '<h3>المواضع</h3>' + refsHTML(k, 10) + '</section>';
+        html += '<section class="card"><h2>' + esc(keyLabel(k)) + '</h2><h3>المفردات للراغب</h3>' + (E.length ? E.map(function (i) { return entryHTML(i, true); }).join('') : '<p class="muted">لا مدخل له في «المفردات».</p>') + mkSection(k, true) + '<h3>المواضع</h3>' + refsHTML(k, 10) + '</section>';
       });
       heads.forEach(function (i) { html += '<section class="card">' + entryHTML(i) + '</section>'; });
       if (full.length) html += '<section class="card"><h2>مداخل يرد فيها اللفظ</h2><p>' + full.map(function (i) { return '<a href="#e/' + i + '">' + esc(RG.H[i]) + '</a>'; }).join('، ') + '</p></section>';
@@ -233,6 +283,9 @@
       '<li><strong>«المفردات في غريب القرآن»</strong> للراغب الأصفهاني (ت 502هـ)، تحقيق صفوان عدنان داودي (دار القلم والدار الشامية). النص من مدونة OpenITI عن المكتبة الشاملة بترخيص CC BY-NC-SA 4.0، وأرقام الصفحات من هذه الطبعة. رُبطت المداخل بجذور الكلمات آلياً، فقد يغيب مدخل عن كلمة أو يُربط بها مدخل قريب.</li>' +
       '<li><strong>تفسير البيضاوي</strong> («أنوار التنزيل وأسرار التأويل»، ت 685هـ): من مدونة OpenITI بترخيص CC BY-NC-SA 4.0، وهي نسخة موقع altafsir.com المقسّمة على الآيات، بلا تشكيل ولا ترقيم صفحات ولا مقدمة المؤلف. قد يشمل الموضع الواحد عدة آيات، فتُظلَّل العبارات القرآنية التي تخص الآية المعروضة.</li>' +
       '<li><strong>«الميسر في غريب القرآن»</strong>: النص الرقمي من مجموعة QUL (Tarteel)، ولا تذكر المجموعة معلومات حقوقه، فيحتاج ترخيص نشره إلى تحقق من الناشر. حُوّلت علامات الرسم العثماني في الكلمات المشروحة إلى علامات الإملاء المعتاد ليُحسن عرضها.</li>' +
+      '<li><strong>«مختار الصحاح»</strong> لزين الدين محمد بن أبي بكر الرازي (ت 666هـ)، تحقيق يوسف الشيخ محمد (المكتبة العصرية، ط5 1420هـ/1999م): من مدونة OpenITI بترخيص CC BY-NC-SA 4.0، وأرقام الصفحات من هذه الطبعة. رُبطت مداخله بالجذور آلياً، والمختار يتبع الجوهري في ردّ بعض الألفاظ إلى غير جذرها في مدونة ليدز، فقد يغيب المدخل عن كلمة.</li>' +
+      '<li><strong>«التبيان في إعراب القرآن»</strong> لأبي البقاء العكبري (ت 616هـ)، تحقيق علي محمد البجاوي (عيسى البابي الحلبي): من مدونة OpenITI بترخيص CC BY-NC-SA 4.0. قُسّم النص على الآيات آلياً بأرقام الآيات التي يذكرها المحقق في رؤوس الفقرات ومطابقتها لنص الآية، وتحقق ذلك نصياً في نحو 97% من المواضع، فقد يقع موضع قليل في غير آيته.</li>' +
+      '<li><strong>الوصف الإعرابي للكلمة</strong>: يُولَّد آلياً من وسوم مدونة القرآن العربية (جامعة ليدز)، ويذكر نوع كل جزء من الكلمة وحالته (الرفع والنصب والجر والجزم، والبناء للمجهول)، ولا يذكر الوظيفة النحوية (فاعل، مفعول، حال…). وفي وسوم المدونة أخطاء معروفة قليلة تنتقل إلى الوصف، فهو عون على الفهم لا بديل عن كتب الإعراب.</li>' +
       '<li><strong>تفسير الجلالين</strong> (جلال الدين المحلي وجلال الدين السيوطي) و<strong>نص القرآن الكريم</strong>: من Tanzil.net، ويُنشران دون تعديل مع ذكر المصدر.</li>' +
       '<li><strong>الجذور</strong>: من التحليل الصرفي لمدونة القرآن العربية (جامعة ليدز). ربط الكلمات بالجذور آلي، ويعرض الموقع ما لا جذر له (الحروف والأدوات وبعض الأعلام) دون مدخل إلا ما طابق عنواناً في «المفردات».</li>' +
       '<li>الموقع لا يرجّح بين ما في المصادر، ولا يغني عن الرجوع إلى الكتب المطبوعة، ونسبة النصوص إلى طبعاتها تحتاج إلى مراجعة متخصص.</li>' +
