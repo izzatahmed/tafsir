@@ -119,7 +119,8 @@
 
   var V = null;   // current verse state
   var TABS = [['gh', 'غريب الآية'], ['word', 'معنى الكلمة'], ['jal', 'الجلالين'], ['bay', 'البيضاوي'], ['ub', 'إعراب العكبري']];
-  function verse(s, a) {
+  function verse(s, a, opt) {
+    opt = opt || {};
     loadIdx().then(function () {
       var n = IDX.S[s - 1][2]; a = Math.max(1, Math.min(n, a));
       document.title = sname(s) + ' ' + a + ' | مفردات القرآن الكريم';
@@ -131,23 +132,57 @@
         var next = a < n ? '#' + s + ':' + (a + 1) : (s < 114 ? '#' + (s + 1) + ':1' : '');
         var gh = r[2] ? r[2][String(a)] : null;
         var first = words.findIndex(function (w) { return entriesKnown(w[1]); });
+        if (opt.wi != null && words[opt.wi]) first = opt.wi;
+        else if (opt.key) { var kw = words.findIndex(function (w) { return w[1] === opt.key; }); if (kw >= 0) first = kw; }
         V = { s: s, a: a, words: words, jal: r[1], ghOK: !!r[2], gh: gh, wi: first };
-        var saved = store('vtab'), tab = TABS.some(function (t) { return t[0] === saved; }) ? saved : 'gh';
+        var saved = store('vtab'), tab = opt.tab || (TABS.some(function (t) { return t[0] === saved; }) ? saved : 'gh');
         if (tab === 'gh' && !gh) tab = 'word';
-        app.innerHTML =
-          '<section class="card"><div class="nav"><select id="ssel" aria-label="السورة">' + opts + '</select> <label>الآية <input id="asel" type="number" min="1" max="' + n + '" value="' + a + '"></label>' +
+        if (opt.occ) document.title = '«' + opt.occ.q + '» | مفردات القرآن الكريم';
+        app.innerHTML = (opt.occ ? occHTML(opt.occ) : '') +
+          '<section class="card"><div class="nav' + (opt.occ ? ' hidenav' : '') + '"><select id="ssel" aria-label="السورة">' + opts + '</select> <label>الآية <input id="asel" type="number" min="1" max="' + n + '" value="' + a + '"></label>' +
           (prev ? '<a class="btn ghost" href="' + prev + '">‹ السابقة</a>' : '') + (next ? '<a class="btn ghost" href="' + next + '">التالية ›</a>' : '') + '</div>' +
           '<div class="verse">' + words.map(function (w, i) { return '<button class="w' + (entriesKnown(w[1]) ? '' : ' nokey') + '" data-i="' + i + '">' + esc(w[0]) + '</button>'; }).join(' ') + ' <span class="aya-no">﴿' + an(a) + '﴾</span></div>' +
-          '<p class="muted small">' + esc(sname(s)) + '، الآية ' + an(a) + ' من ' + an(n) + '. انقر كلمة لمعناها عند الراغب، أو اختر ما تريد من الأزرار.</p>' +
+          '<p class="muted small">' + esc(sname(s)) + '، الآية ' + an(a) + ' من ' + an(n) + (opt.occ ? ' — <a href="#' + s + ':' + a + '">فتح الآية وما حولها</a>' : '') + '. انقر كلمة لمعناها، أو اختر من الأزرار.</p>' +
           '<div class="tabs vt" role="tablist">' + TABS.map(function (t) { return '<button role="tab" data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
           '<div id="pane" role="tabpanel"></div></section>';
         document.getElementById('ssel').onchange = function () { location.hash = '#' + this.value + ':1'; };
         document.getElementById('asel').onchange = function () { location.hash = '#' + s + ':' + this.value; };
         app.querySelectorAll('.w').forEach(function (b) { b.onclick = function () { V.wi = +b.dataset.i; markWord(); pane('word'); }; });
         app.querySelectorAll('.vt button').forEach(function (b) { b.onclick = function () { store('vtab', b.dataset.t); pane(b.dataset.t); }; });
+        if (opt.occ) bindOcc(opt.occ);
         markWord(); pane(tab);
       });
     }).catch(fail);
+  }
+  // occurrences navigator shown above the verse when the page comes from a search
+  function occHTML(o) {
+    var L = o.list, n = L.length, i = o.i, groups = [], last = null;
+    L.forEach(function (x, j) { if (!last || last.s !== x.s) { last = { s: x.s, items: [] }; groups.push(last); } last.items.push('<a href="#" data-j="' + j + '"' + (j === i ? ' class="on"' : '') + '>' + an(x.a) + '</a>'); });
+    var others = (o.others || []).map(function (k) { return '<a href="#w/' + encodeURIComponent(k[0] === '#' ? k.slice(1) : k) + '">' + esc(keyLabel(k)) + '</a>'; }).join('، ');
+    return '<section class="card occ"><div class="occ-head"><strong class="q">«' + esc(o.q) + '»</strong> <span class="muted small">' + esc(o.how) + '، ' + ayat(n) + '</span></div>' +
+      '<div class="nav"><button class="btn ghost" id="oprev"' + (i ? '' : ' disabled') + '>‹ السابق</button><span class="small">الموضع ' + an(i + 1) + ' من ' + an(n) + ': ' + esc(sname(L[i].s)) + ' ' + an(L[i].a) + '</span><button class="btn ghost" id="onext"' + (i < n - 1 ? '' : ' disabled') + '>التالي ›</button></div>' +
+      '<details class="allocc"><summary class="small">كل المواضع</summary><div class="refs">' + groups.map(function (g) { return '<div class="s"><strong>' + esc(sname(g.s)) + ':</strong> ' + g.items.join('، ') + '</div>'; }).join('') + '</div></details>' +
+      (others ? '<p class="small muted">نتائج أخرى: ' + others + '</p>' : '') + '</section>';
+  }
+  function bindOcc(o) {
+    function goTo(j) { var x = o.list[j]; o.i = j; verse(x.s, x.a, { wi: x.w, key: o.key, tab: 'word', occ: o }); window.scrollTo(0, 0); }
+    var p = document.getElementById('oprev'), nx = document.getElementById('onext');
+    if (p) p.onclick = function () { if (o.i > 0) goTo(o.i - 1); };
+    if (nx) nx.onclick = function () { if (o.i < o.list.length - 1) goTo(o.i + 1); };
+    app.querySelectorAll('.allocc a[data-j]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); goTo(+a.dataset.j); }; });
+  }
+  var FR = null, frP = null;
+  function loadFR() { return FR ? Promise.resolve(FR) : (frP = frP || getJSON('data/forms.json').then(function (d) { FR = d; return d; })); }
+  function refsOfKey(key) {
+    var out = []; (IDX.R[key] || '').split(';').forEach(function (g) { if (!g) return; var p = g.split(':'); p[1].split('.').forEach(function (a) { out.push({ s: +p[0], a: +a, w: null }); }); });
+    return out;
+  }
+  function refsOfForm(f) { return (FR[f] || '').split(',').filter(Boolean).map(function (r) { var m = r.match(/^(\d+):(\d+)\.(\d+)$/); return { s: +m[1], a: +m[2], w: +m[3] }; }); }
+  function openOcc(q, how, key, list, others) {
+    if (!list.length) return false;
+    var o = { q: q, how: how, key: key, list: list, i: 0, others: others };
+    verse(list[0].s, list[0].a, { wi: list[0].w, key: key, tab: 'word', occ: o });
+    return true;
   }
   function entriesKnown(key) { return key && entriesFor(key).length > 0; }
   function markWord() { app.querySelectorAll('.w').forEach(function (b) { b.classList.toggle('on', +b.dataset.i === V.wi); }); }
@@ -174,7 +209,7 @@
     var html = '<h2>' + esc(w[0]) + '</h2><p class="irab" id="irab"><span class="muted small">الوصف الإعرابي…</span></p>';
     if (!key) html += '<p class="muted">لا جذر لهذه الكلمة في مدونة ليدز (حرف أو أداة).</p>';
     else {
-      html += '<p class="muted">' + esc(keyLabel(key)) + ' — <a href="#r/' + encodeURIComponent(key) + '">مواضعه في القرآن الكريم</a></p>';
+      html += '<p class="muted">' + esc(keyLabel(key)) + ' — <a href="#r/' + encodeURIComponent(key) + '">التنقل في مواضعه</a> · <a href="#r/' + encodeURIComponent(key) + '/full">صفحة الجذر كاملة</a></p>';
       html += '<h3>المفردات للراغب</h3>' + (E.length ? E.map(function (i) { return entryHTML(i, true); }).join('') : '<p class="muted">لا مدخل لهذا ' + (key[0] === '#' ? 'اللفظ' : 'الجذر') + ' في «المفردات».</p>');
       html += '<div id="mk"></div>';
     }
@@ -223,6 +258,12 @@
   }
 
   function rootView(key) {
+    if (location.hash.indexOf('#r/') === 0 && !/\/full$/.test(decodeURIComponent(location.hash))) {
+      return loadIdx().then(function () { if (!openOcc(key[0] === '#' ? key.slice(1) : key, keyLabel(key), key, refsOfKey(key), [])) rootFull(key); }).catch(fail);
+    }
+    rootFull(key.replace(/\/full$/, ''));
+  }
+  function rootFull(key) {
     Promise.all([loadIdx(), loadRG(), loadMK().catch(miss)]).then(function () {
       document.title = keyLabel(key) + ' | مفردات القرآن الكريم';
       var E = entriesFor(key);
@@ -244,16 +285,24 @@
 
   var PREF = ['وال', 'فال', 'بال', 'كال', 'لل', 'ال', 'و', 'ف', 'ب', 'ل', 'ك', 'س'];
   function search(raw) {
-    Promise.all([loadIdx(), loadRG(), loadMK().catch(miss)]).then(function () {
+    Promise.all([loadIdx(), loadRG(), loadMK().catch(miss), loadFR().catch(miss)]).then(function () {
       var q = raw.trim(); if (!q) return home();
       var m = q.match(/^(\d{1,3})\s*[:：\/ ]\s*(\d{1,3})$/);
       if (m) { location.hash = '#' + m[1] + ':' + m[2]; return; }
       m = q.match(/^(.+?)\s+(\d{1,3})$/);
       if (m && (SN[nz(m[1])] || SN[nz(m[1]).replace(/^ال/, '')])) { location.hash = '#' + (SN[nz(m[1])] || SN[nz(m[1]).replace(/^ال/, '')]) + ':' + m[2]; return; }
-      var n = nz(q).replace(/\s+/g, ' '), keys = [], how = '';
-      if (IDX.F[n]) { keys = IDX.F[n].slice(); how = 'الكلمة بنصها في المصحف'; }
-      if (!keys.length) for (var p = 0; p < PREF.length && !keys.length; p++) if (n.indexOf(PREF[p]) === 0 && n.length - PREF[p].length >= 2 && IDX.F[n.slice(PREF[p].length)]) { keys = IDX.F[n.slice(PREF[p].length)].slice(); how = 'بعد حذف السابقة «' + PREF[p] + '»'; }
-      if (!keys.length) for (var p2 = 0; p2 < PREF.length && !keys.length; p2++) if (IDX.F[PREF[p2] + n]) { keys = IDX.F[PREF[p2] + n].slice(); how = 'الكلمة في المصحف بالسابقة «' + PREF[p2] + '»'; }
+      var n = nz(q).replace(/\s+/g, ' '), keys = [], how = '', form = '';
+      if (IDX.F[n]) { keys = IDX.F[n].slice(); how = 'الكلمة بنصها في المصحف'; form = n; }
+      if (!keys.length) for (var p = 0; p < PREF.length && !keys.length; p++) if (n.indexOf(PREF[p]) === 0 && n.length - PREF[p].length >= 2 && IDX.F[n.slice(PREF[p].length)]) { form = n.slice(PREF[p].length); keys = IDX.F[form].slice(); how = 'بعد حذف السابقة «' + PREF[p] + '»'; }
+      var merged = null;
+      if (!keys.length) {
+        var vf = PREF.concat(['ل', 'ب']).map(function (x) { return x + n; }).filter(function (f, i, A) { return IDX.F[f] && A.indexOf(f) === i; });
+        if (vf.length) {
+          keys = IDX.F[vf[0]].slice(); vf.forEach(function (f) { IDX.F[f].forEach(function (k) { if (keys.indexOf(k) < 0) keys.push(k); }); });
+          how = 'الكلمة في المصحف بالسوابق: ' + vf.join('، ');
+          if (FR) { merged = []; vf.forEach(function (f) { merged = merged.concat(refsOfForm(f)); }); merged.sort(function (x, y) { return x.s - y.s || x.a - y.a || x.w - y.w; }); }
+        }
+      }
       if (!keys.length && n.length >= 3 && !KEYN[n]) {
         var cnt = {};
         Object.keys(IDX.F).forEach(function (f) { if (f.indexOf(n) >= 0) IDX.F[f].forEach(function (k) { cnt[k] = (cnt[k] || 0) + 1; }); });
@@ -261,6 +310,9 @@
         if (keys.length) how = 'كلمات في المصحف تحتوي «' + q + '»';
       }
       if (KEYN[n] && keys.indexOf(KEYN[n]) < 0) { keys.unshift(KEYN[n]); how = how || 'جذر'; }
+      if (merged && merged.length && openOcc(q, how, keys[0], merged, keys.slice(1))) return;
+      if (form && FR && FR[form]) { var fl = refsOfForm(form); if (openOcc(q, how, keys[0], fl, keys.slice(1))) return; }
+      if (keys.length) { if (openOcc(q, how === 'جذر' ? 'جذر «' + keys[0] + '»' : how + '، مواضع الجذر «' + keys[0].replace(/^#/, '') + '»', keys[0], refsOfKey(keys[0]), keys.slice(1))) return; }
       var heads = (RG.HN[n] || []).filter(function (i) { return !keys.some(function (k) { return entriesFor(k).indexOf(i) >= 0; }); });
       var full = [];
       if (!keys.length && !heads.length && n.length >= 3) RG.T.forEach(function (t, i) { if (full.length < 40 && nz(t).indexOf(n) >= 0) full.push(i); });

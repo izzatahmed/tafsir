@@ -80,3 +80,11 @@ ul.plain{padding-inline-start:1.3rem}
 .head.mk{font-size:1.1rem}
 hr.sep{border:none;border-top:1px dashed var(--border);margin:.6rem 0}
 h3{margin-top:.4rem}
+
+.occ{padding-top:.7rem;padding-bottom:.7rem}
+.occ .nav{margin:.3rem 0}
+.occ .nav button[disabled]{opacity:.4;cursor:default}
+.occ-head .q{font-size:1.25rem}
+.allocc .refs a.on{background:var(--sel);border-radius:4px;padding:0 .2rem}
+.nav.hidenav{display:none}
+.occ .nav{justify-content:space-between}
