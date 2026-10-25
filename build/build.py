@@ -20,6 +20,7 @@ def nz(w):
 # ---------- Quran text with root per word ----------
 forms = collections.defaultdict(collections.Counter)    # normalised form -> Counter(key)
 roots = collections.defaultdict(list)                   # key -> verse refs
+formrefs = collections.defaultdict(list)                # normalised form -> 's:a.w' occurrences (w = word index in the verse file)
 nwords = 0
 for s in range(1, 115):
     n = CH[s - 1]['total_verses']; vs = []
@@ -27,16 +28,18 @@ for s in range(1, 115):
         k = f'{s}:{a}'
         al, miss = align(k); assert miss == 0 or k in ('2:245', '7:69'), k
         row = []
-        for w, root, lem in al:
+        for wi, (w, root, lem) in enumerate(al):
             key = root or ('#' + DIAC.sub('', lem) if lem else '')
             row.append([w, key]); nwords += 1
             if key:
                 for part in w.split(' '):
                     forms[nz(part)][key] += 1
+                    if not formrefs[nz(part)] or formrefs[nz(part)][-1] != f'{s}:{a}.{wi}': formrefs[nz(part)].append(f'{s}:{a}.{wi}')
                 if not roots[key] or roots[key][-1] != k: roots[key].append(k)
         vs.append(row)
     json.dump(vs, open(OUT + f'data/q/{s}.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
 assert nwords > 77000
+json.dump({f: ','.join(v) for f, v in formrefs.items()}, open(OUT + 'data/forms.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
 FORMS = {f: [k for k, _ in c.most_common()] for f, c in forms.items()}
 # root occurrence index, refs grouped by surah: "s:a.a.a;s:a"
 def pack(refs):
