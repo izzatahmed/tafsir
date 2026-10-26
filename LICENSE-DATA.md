@@ -6,10 +6,12 @@
 | «أنوار التنزيل وأسرار التأويل» للبيضاوي (ت 685هـ) | OpenITI، الإصدار `0685NasirDinBaydawi.AnwarTanzil.Tafsir01006-ara1` (نص altafsir.com المقسّم على الآيات) | CC BY-NC-SA 4.0؛ وملفات `data/bay/` بالترخيص نفسه |
 | «مختار الصحاح» للرازي (ت 666هـ)، تحقيق يوسف الشيخ محمد | OpenITI، الإصدار `0666IbnAbiBakrZaynDinRazi.MukhtarSihah.Shamela0023193-ara1` | CC BY-NC-SA 4.0؛ ويُنشر `data/mukhtar.js` بالترخيص نفسه |
 | «التبيان في إعراب القرآن» للعكبري (ت 616هـ)، تحقيق علي محمد البجاوي | OpenITI، الإصدار `0616MuhibbDinCukbari.TibyanFiIcrabQuran.Shamela0022928-ara1` | CC BY-NC-SA 4.0؛ وملفات `data/ub/` بالترخيص نفسه (مقسّمة على الآيات آلياً) |
+| «معالم التنزيل» للبغوي (ت 516هـ) | OpenITI، الإصدار `0510IbnMascudBaghawi.Tafsir.Tafsir02013-ara1` (نص altafsir.com المقسّم على الآيات) | CC BY-NC-SA 4.0؛ وملفات `data/bg/` بالترخيص نفسه |
+| «لباب النقول في أسباب النزول» للسيوطي (ت 911هـ) | OpenITI، الإصدار `0911Suyuti.LubabNuqul.ShamAY0034090-ara1` | CC BY-NC-SA 4.0؛ و`data/asbab.json` بالترخيص نفسه (مقسّم على الآيات آلياً) |
 | الوصف الإعرابي للكلمات (`data/irab.json`) | مولَّد آلياً من وسوم مدونة القرآن العربية، جامعة ليدز | GNU GPL، مع ذكر المصدر |
 | تفسير الجلالين | Tanzil.net (`ar.jalalayn`) | الاستعمال غير التجاري، دون تعديل، مع ذكر المصدر |
 | نص القرآن الكريم | Tanzil.net | CC BY 3.0، دون تعديل للنص، مع ذكر المصدر والرابط إلى tanzil.net |
 | «الميسر في غريب القرآن» | مجموعة QUL (Tarteel)، عبر `spa5k/tafsir_api` | لا تذكر المجموعة معلومات الحقوق؛ **يحتاج إلى تحقق من الناشر** قبل أي استعمال غير هذا الاستعمال غير التجاري. حُوّلت علامات الرسم العثماني في الكلمات المشروحة إلى علامات الإملاء المعتاد |
 | جذور الكلمات | مدونة القرآن العربية، جامعة ليدز (corpus.quran.com) | GNU GPL؛ مع ذكر المصدر |
 
-The interface code (`index.html`, `assets/`, `build/`) may be reused freely; the data keep the licences above. Because four texts are CC BY-NC-SA, the site must remain non-commercial.
+The interface code (`index.html`, `assets/`, `build/`) may be reused freely; the data keep the licences above. Because six texts are CC BY-NC-SA, the site must remain non-commercial.
