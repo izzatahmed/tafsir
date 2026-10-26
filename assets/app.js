@@ -40,6 +40,21 @@
     return mkP;
   }
   function loadIR() { return IR ? Promise.resolve(IR) : (irP = irP || getJSON('data/irab.json').then(function (d) { IR = d; return d; })); }
+  var BGC = {}, AS = null, asP = null;
+  function loadBG(s) { var c = IDX.G[s - 1]; return BGC[c] ? Promise.resolve(BGC[c]) : getJSON('data/bg/' + c + '.json').then(function (d) { BGC[c] = d; return d; }); }
+  function loadAS() { return AS ? Promise.resolve(AS) : (asP = asP || getJSON('data/asbab.json').then(function (d) { AS = d; return d; })); }
+  function asbPane(el) {
+    el.innerHTML = '<p class="loading">جارٍ تحميل أسباب النزول…</p>';
+    var s = V.s, a = V.a;
+    loadAS().then(function (d) {
+      if (!V || V.s !== s || V.a !== a || el.dataset.t !== 'asb') return;
+      var items = (d[String(s)] || []).filter(function (x) { return x[0] === a; });
+      var head = '<div class="muted small">لباب النقول في أسباب النزول، للسيوطي</div>';
+      if (!items.length) { el.innerHTML = head + '<p class="muted">لم يذكر السيوطي في «لباب النقول» سبب نزول لهذه الآية.</p>'; return; }
+      el.innerHTML = head + items.map(function (x) { return '<div class="txt">' + linkRefs(esc(x[1])).replace(/\{([^}]+)\}/g, '<span class="q">﴿$1﴾</span>') + '</div>'; }).join('<hr class="sep">') +
+        '<p class="muted small note">يذكر السيوطي الروايات بأسانيدها ويحكم على بعضها؛ ودرجة كل رواية تحتاج إلى مراجعة متخصص. والرمز (ك) عنده لما زاده على أسباب النزول للواحدي.</p>';
+    }).catch(function (e) { console.warn(e); el.innerHTML = '<p class="muted">تعذّر تحميل أسباب النزول.</p>'; });
+  }
   function loadUB(s) { var c = IDX.U[s - 1]; return UB[c] ? Promise.resolve(UB[c]) : getJSON('data/ub/' + c + '.json').then(function (d) { UB[c] = d; return d; }); }
   function part(kind, s) { return cache[kind][s] ? Promise.resolve(cache[kind][s]) : getJSON('data/' + kind + '/' + s + '.json').then(function (d) { cache[kind][s] = d; return d; }); }
 
@@ -111,14 +126,14 @@
     if (window.innerWidth >= 700) setTimeout(function () { try { document.getElementById('q').focus(); } catch (e) {} }, 50);
     loadIdx().then(function () {
       app.innerHTML = '<section class="card"><h1>مفردات القرآن الكريم</h1>' +
-        '<p>معاني ألفاظ القرآن الكريم من «المفردات في غريب القرآن» للراغب الأصفهاني (ت 502هـ)، ومن «مختار الصحاح» للرازي، مع وصف إعرابي مختصر لكل كلمة، ولكل آية «الميسر في غريب القرآن» وتفسيرا الجلالين والبيضاوي و«التبيان في إعراب القرآن» للعكبري.</p>' +
-        '<ul class="plain"><li>ابدأ الكتابة في مربع البحث فتظهر الاقتراحات مع كل حرف: كلمة كما في المصحف (يستفزونك)، أو جذرها (فزز)، أو سورة، أو موضعاً (17:64 أو الإسراء 64).</li><li>في صفحة الآية تحت الآية مباشرة أزرار: غريب الآية، ومعنى الكلمة (الراغب ومختار الصحاح والوصف الإعرابي)، والجلالين، والبيضاوي، وإعراب العكبري. وانقر أي كلمة لمعناها ومواضع جذرها.</li></ul></section>' +
+        '<p>معاني ألفاظ القرآن الكريم من «المفردات في غريب القرآن» للراغب الأصفهاني (ت 502هـ)، ومن «مختار الصحاح» للرازي، مع وصف إعرابي مختصر لكل كلمة، ولكل آية «الميسر في غريب القرآن» وتفسيرا الجلالين والبيضاوي وتفسير البغوي، و«لباب النقول في أسباب النزول» للسيوطي، و«التبيان في إعراب القرآن» للعكبري.</p>' +
+        '<ul class="plain"><li>ابدأ الكتابة في مربع البحث فتظهر الاقتراحات مع كل حرف: كلمة كما في المصحف (يستفزونك)، أو جذرها (فزز)، أو سورة، أو موضعاً (17:64 أو الإسراء 64).</li><li>في صفحة الآية تحت الآية مباشرة أزرار: غريب الآية، ومعنى الكلمة (الراغب ومختار الصحاح والوصف الإعرابي)، والجلالين، والبيضاوي، والبغوي، وأسباب النزول، وإعراب العكبري. وانقر أي كلمة لمعناها ومواضع جذرها.</li></ul></section>' +
         '<section class="card"><h2>السور</h2><div class="grid">' + IDX.S.map(function (x, i) { return '<a href="#' + (i + 1) + ':1">' + an(i + 1) + '. ' + esc(x[0]) + ' <span>' + an(x[2]) + '</span></a>'; }).join('') + '</div></section>';
     }).catch(fail);
   }
 
   var V = null;   // current verse state
-  var TABS = [['gh', 'غريب الآية'], ['word', 'معنى الكلمة'], ['jal', 'الجلالين'], ['bay', 'البيضاوي'], ['ub', 'إعراب العكبري']];
+  var TABS = [['gh', 'غريب الآية'], ['word', 'معنى الكلمة'], ['jal', 'الجلالين'], ['bay', 'البيضاوي'], ['bg', 'البغوي'], ['asb', 'أسباب النزول'], ['ub', 'إعراب العكبري']];
   function verse(s, a, opt) {
     opt = opt || {};
     loadIdx().then(function () {
@@ -188,8 +203,9 @@
   function markWord() { app.querySelectorAll('.w').forEach(function (b) { b.classList.toggle('on', +b.dataset.i === V.wi); }); }
   function pane(t) {
     app.querySelectorAll('.vt button').forEach(function (x) { x.setAttribute('aria-selected', x.dataset.t === t); });
-    var el = document.getElementById('pane'); el.className = t === 'bay' || t === 'ub' ? 'scroll' : ''; el.scrollTop = 0;
+    var el = document.getElementById('pane'); el.className = t === 'bay' || t === 'bg' || t === 'ub' || t === 'asb' ? 'scroll' : ''; el.dataset.t = t; el.scrollTop = 0;
     if (t === 'gh') return ghPane(el);
+    if (t === 'asb') return asbPane(el);
     if (t === 'ub') return ubPane(el);
     if (t === 'word') return wordPane(el);
     return tafsir(V.s, V.a, t, V.jal, el);
@@ -228,7 +244,7 @@
     el.innerHTML = '<p class="loading">جارٍ تحميل إعراب العكبري…</p>';
     var s = V.s, a = V.a;
     loadUB(s).then(function (d) {
-      if (!V || V.s !== s || V.a !== a || el.className !== 'scroll') return;
+      if (!V || V.s !== s || V.a !== a || el.dataset.t !== 'ub') return;
       var secs = (d[String(s)] || []).filter(function (x) { return x[0] <= a && a <= x[1]; });
       var head = '<div class="muted small">التبيان في إعراب القرآن، لأبي البقاء العكبري</div>';
       if (!secs.length) { el.innerHTML = head + '<p class="muted">لم يقف العكبري عند هذه الآية.</p>'; return; }
@@ -241,20 +257,25 @@
   function tafsir(s, a, t, jal, el) {
     if (t === 'jal' && !jal) { el.innerHTML = '<p class="muted">تعذّر تحميل تفسير الجلالين لهذه السورة.</p>'; return; }
     if (t === 'jal') { el.innerHTML = '<div class="muted small">تفسير الجلالين (المحلي والسيوطي)</div><div class="txt">' + esc(jal[a - 1]).replace(/«([^»]+)»/g, '<span class="q">«$1»</span>') + '</div>'; return; }
-    el.innerHTML = '<p class="loading">جارٍ تحميل تفسير البيضاوي للسورة…</p>';
-    Promise.all([part('bay', s), part('q', s)]).then(function (r) {
-      if (!V || V.s !== s || V.a !== a || el.className !== 'scroll') return;
-      var d = r[0], j = 0; for (var k = 0; k < d.length; k++) if (d[k][0] <= a && a <= d[k][1]) j = k;
-      var from = d[j][0], to = d[j][1];
-      var note = from !== to ? '<p class="muted small">هذا الموضع من تفسير البيضاوي يشمل الآيات ' + an(from) + '–' + an(to) + '، والمظلَّل ما يخص الآية ' + an(a) + '.</p>' : '';
+    var bay = t === 'bay', name = bay ? 'تفسير البيضاوي' : 'تفسير البغوي', title = bay ? 'أنوار التنزيل وأسرار التأويل، للبيضاوي' : 'معالم التنزيل، للبغوي';
+    el.innerHTML = '<p class="loading">جارٍ تحميل ' + name + '…</p>';
+    var src = bay ? part('bay', s) : loadBG(s).then(function (d) { return d[String(s)] || []; });
+    Promise.all([src, part('q', s)]).then(function (r) {
+      if (!V || V.s !== s || V.a !== a || el.dataset.t !== t) return;
+      var P = r[0].filter(function (x) { return x[0] <= a && a <= x[1]; });
+      if (!P.length) { el.innerHTML = '<div class="muted small">' + title + '</div><p class="muted">لا شيء لهذه الآية.</p>'; return; }
       var vs = sk(r[1][a - 1].map(function (w) { return w[0]; }).join(''));
-      var body = esc(d[j][2]).replace(/\{([^}]+)\}/g, function (m, qt) {
-        var k2 = sk(qt), on = from !== to && k2.length >= 4 && vs.indexOf(k2) >= 0;
-        return '<span class="q' + (on ? ' cur' : '') + '">﴿' + qt.trim() + '﴾</span>';
-      });
-      el.innerHTML = '<div class="muted small">أنوار التنزيل وأسرار التأويل، للبيضاوي</div>' + note + '<div class="txt">' + body + '</div>';
+      el.innerHTML = '<div class="muted small">' + title + '</div>' + P.map(function (x) {
+        var from = x[0], to = x[1];
+        var note = from !== to ? '<p class="muted small">هذا الموضع من ' + name + ' يشمل الآيات ' + an(from) + '–' + an(to) + '، والمظلَّل ما يخص الآية ' + an(a) + '.</p>' : '';
+        var body = esc(x[2]).replace(/\{([^}]+)\}/g, function (m, qt) {
+          var k2 = sk(qt), on = from !== to && k2.length >= 4 && vs.indexOf(k2) >= 0;
+          return '<span class="q' + (on ? ' cur' : '') + '">﴿' + qt.trim() + '﴾</span>';
+        });
+        return note + '<div class="txt">' + body + '</div>';
+      }).join('<hr class="sep">');
       var c = el.querySelector('.cur'); el.scrollTop = c ? Math.max(0, c.offsetTop - 40) : 0;
-    }).catch(function (e) { console.warn(e); el.innerHTML = '<p class="muted">تعذّر تحميل تفسير البيضاوي لهذه السورة.</p>'; });
+    }).catch(function (e) { console.warn(e); el.innerHTML = '<p class="muted">تعذّر تحميل ' + name + ' لهذه السورة.</p>'; });
   }
 
   function rootView(key) {
@@ -334,6 +355,8 @@
     app.innerHTML = '<section class="card"><h1>المصادر وحدود الموقع</h1><ul class="plain">' +
       '<li><strong>«المفردات في غريب القرآن»</strong> للراغب الأصفهاني (ت 502هـ)، تحقيق صفوان عدنان داودي (دار القلم والدار الشامية). النص من مدونة OpenITI عن المكتبة الشاملة بترخيص CC BY-NC-SA 4.0، وأرقام الصفحات من هذه الطبعة. رُبطت المداخل بجذور الكلمات آلياً، فقد يغيب مدخل عن كلمة أو يُربط بها مدخل قريب.</li>' +
       '<li><strong>تفسير البيضاوي</strong> («أنوار التنزيل وأسرار التأويل»، ت 685هـ): من مدونة OpenITI بترخيص CC BY-NC-SA 4.0، وهي نسخة موقع altafsir.com المقسّمة على الآيات، بلا تشكيل ولا ترقيم صفحات ولا مقدمة المؤلف. قد يشمل الموضع الواحد عدة آيات، فتُظلَّل العبارات القرآنية التي تخص الآية المعروضة.</li>' +
+      '<li><strong>تفسير البغوي</strong> («معالم التنزيل»، ت 516هـ): من مدونة OpenITI بترخيص CC BY-NC-SA 4.0، وهي نسخة موقع altafsir.com المقسّمة على الآيات، بلا تشكيل ولا ترقيم صفحات.</li>' +
+      '<li><strong>«لباب النقول في أسباب النزول»</strong> للسيوطي (ت 911هـ): من مدونة OpenITI بترخيص CC BY-NC-SA 4.0 (نسخة ShamAY0034090). قُسّم على الآيات آلياً بمطابقة الألفاظ القرآنية التي يبدأ بها كل خبر، وتطابق ذلك في نحو 98% من الأخبار، فقد يقع خبر قليل في غير آيته. والكتاب يذكر الروايات بأسانيدها، ودرجتها تحتاج إلى مراجعة متخصص.</li>' +
       '<li><strong>«الميسر في غريب القرآن»</strong>: النص الرقمي من مجموعة QUL (Tarteel)، ولا تذكر المجموعة معلومات حقوقه، فيحتاج ترخيص نشره إلى تحقق من الناشر. حُوّلت علامات الرسم العثماني في الكلمات المشروحة إلى علامات الإملاء المعتاد ليُحسن عرضها.</li>' +
       '<li><strong>«مختار الصحاح»</strong> لزين الدين محمد بن أبي بكر الرازي (ت 666هـ)، تحقيق يوسف الشيخ محمد (المكتبة العصرية، ط5 1420هـ/1999م): من مدونة OpenITI بترخيص CC BY-NC-SA 4.0، وأرقام الصفحات من هذه الطبعة. رُبطت مداخله بالجذور آلياً، والمختار يتبع الجوهري في ردّ بعض الألفاظ إلى غير جذرها في مدونة ليدز، فقد يغيب المدخل عن كلمة.</li>' +
       '<li><strong>«التبيان في إعراب القرآن»</strong> لأبي البقاء العكبري (ت 616هـ)، تحقيق علي محمد البجاوي (عيسى البابي الحلبي): من مدونة OpenITI بترخيص CC BY-NC-SA 4.0. قُسّم النص على الآيات آلياً بأرقام الآيات التي يذكرها المحقق في رؤوس الفقرات ومطابقتها لنص الآية، وتحقق ذلك نصياً في نحو 97% من المواضع، فقد يقع موضع قليل في غير آيته.</li>' +
