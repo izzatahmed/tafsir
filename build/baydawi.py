@@ -1,8 +1,8 @@
 """Parse al-Baydawi's Anwar al-Tanzil (OpenITI, version Tafsir01006 from altafsir.com, structured by verse) into per-surah passages."""
 import re, json, collections
 F = '/home/claude/openiti/0700ah/data/0685NasirDinBaydawi/0685NasirDinBaydawi.AnwarTanzil/0685NasirDinBaydawi.AnwarTanzil.Tafsir01006-ara1'
-def parse():
-    raw = open(F, encoding='utf-8-sig').read().split('\n')
+def parse(path=None):
+    raw = open(path or F, encoding='utf-8-sig').read().split('\n')
     P = collections.defaultdict(list); cur = None; buf = []
     def flush():
         if cur:

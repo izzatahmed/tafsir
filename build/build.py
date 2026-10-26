@@ -161,3 +161,27 @@ I = json.load(open(OUT + 'data/index.json', encoding='utf-8'))
 I['U'] = [UBMAP[s] for s in range(1, 115)]
 json.dump(I, open(OUT + 'data/index.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
 print('mukhtar entries', len(ME), 'roots mapped', len(MX), 'token coverage', round(tok / tot, 3), '| irab unique', len(DU), '| ukbari', dict(UST), 'chunks', len(CHUNKS))
+
+# ---------- al-Baghawi, Ma'alim al-Tanzil (OpenITI, altafsir.com text structured by verse), chunked ----------
+BG = bparse('/home/claude/openiti/0525ah/data/0510IbnMascudBaghawi/0510IbnMascudBaghawi.Tafsir/0510IbnMascudBaghawi.Tafsir.Tafsir02013-ara1')
+assert sum(len(v) for v in BG.values()) == 1930 and len(BG) == 114
+os.makedirs(OUT + 'data/bg', exist_ok=True)
+bsz = {s: sum(len(t) for _, _, t in BG[s]) for s in range(1, 115)}
+BCH = []; cur = []; acc = 0; target = sum(bsz.values()) / 12
+for s in range(1, 115):
+    cur.append(s); acc += bsz[s]
+    if acc >= target and len(BCH) < 11: BCH.append(cur); cur = []; acc = 0
+if cur: BCH.append(cur)
+BMAP = {}
+for i, ch in enumerate(BCH):
+    json.dump({str(s): BG[s] for s in ch}, open(OUT + f'data/bg/{i + 1}.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+    for s in ch: BMAP[s] = i + 1
+
+# ---------- al-Suyuti, Lubab al-Nuqul (OpenITI), one file {surah: [[verse, text], ...]} ----------
+from suyuti import split as ssplit
+SY, SST = ssplit()
+json.dump({str(s): v for s, v in SY.items()}, open(OUT + 'data/asbab.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+I = json.load(open(OUT + 'data/index.json', encoding='utf-8'))
+I['G'] = [BMAP[s] for s in range(1, 115)]
+json.dump(I, open(OUT + 'data/index.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+print('baghawi chunks', len(BCH), '| suyuti', dict(SST), 'items', sum(len(v) for v in SY.values()))
