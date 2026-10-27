@@ -2,6 +2,9 @@
 (function () {
   'use strict';
   var app = document.getElementById('app');
+  // the three sister sites; READINGS stays empty until its address is known
+  var SITES = { hypertext: 'https://izzatahmed.github.io/hypertext/', tafsir: 'https://izzatahmed.github.io/tafsir/', readings: 'https://izzatahmed.github.io/atlas/' };
+  function readingsLink(s, a) { return SITES.readings ? SITES.readings + '#search?q=' + s + ':' + a : ''; }
   var IDX = null, RG = null, cache = { q: {}, jal: {}, bay: {}, gh: {} };
   var DIAC = /[ؐ-ًؚ-ٰٟۖ-ۭـ]/g;
   var MAP = { 'ٱ': 'ا', 'أ': 'ا', 'إ': 'ا', 'آ': 'ا', 'ى': 'ي', 'ة': 'ه', 'ؤ': 'و', 'ئ': 'ي' };
@@ -40,6 +43,19 @@
     return mkP;
   }
   function loadIR() { return IR ? Promise.resolve(IR) : (irP = irP || getJSON('data/irab.json').then(function (d) { IR = d; return d; })); }
+  var EN = {};
+  function enPane(el) {
+    var tr = store('entr') === 'pickthall' ? 'pickthall' : 'sahih', s = V.s, a = V.a;
+    var NAMES = { sahih: 'Saheeh International', pickthall: 'Pickthall (1930)' };
+    el.innerHTML = '<p class="loading">Loading…</p>';
+    (EN[tr] ? Promise.resolve(EN[tr]) : getJSON('data/en/' + tr + '.json').then(function (d) { EN[tr] = d; return d; })).then(function (d) {
+      if (!V || V.s !== s || V.a !== a || el.dataset.t !== 'en') return;
+      el.innerHTML = '<div class="entabs" dir="ltr">' + ['sahih', 'pickthall'].map(function (k) { return '<button data-tr="' + k + '" aria-pressed="' + (k === tr) + '">' + NAMES[k] + '</button>'; }).join('') + '</div>' +
+        '<p class="en" dir="ltr" lang="en">' + esc(d[s - 1][a - 1]) + ' <span class="muted small">(' + s + ':' + a + ')</span></p>' +
+        '<p class="muted small" dir="ltr" lang="en">Translation: ' + NAMES[tr] + ', from Tanzil.net, shown unaltered for non-commercial use.</p>';
+      el.querySelectorAll('.entabs button').forEach(function (b) { b.onclick = function () { store('entr', b.dataset.tr); enPane(el); }; });
+    }).catch(function (e) { console.warn(e); el.innerHTML = '<p class="muted">تعذّر تحميل الترجمة.</p>'; });
+  }
   var BGC = {}, AS = null, asP = null;
   function loadBG(s) { var c = IDX.G[s - 1]; return BGC[c] ? Promise.resolve(BGC[c]) : getJSON('data/bg/' + c + '.json').then(function (d) { BGC[c] = d; return d; }); }
   function loadAS() { return AS ? Promise.resolve(AS) : (asP = asP || getJSON('data/asbab.json').then(function (d) { AS = d; return d; })); }
@@ -127,13 +143,13 @@
     loadIdx().then(function () {
       app.innerHTML = '<section class="card"><h1>مفردات القرآن الكريم</h1>' +
         '<p>معاني ألفاظ القرآن الكريم من «المفردات في غريب القرآن» للراغب الأصفهاني (ت 502هـ)، ومن «مختار الصحاح» للرازي، مع وصف إعرابي مختصر لكل كلمة، ولكل آية «الميسر في غريب القرآن» وتفسيرا الجلالين والبيضاوي وتفسير البغوي، و«لباب النقول في أسباب النزول» للسيوطي، و«التبيان في إعراب القرآن» للعكبري.</p>' +
-        '<ul class="plain"><li>ابدأ الكتابة في مربع البحث فتظهر الاقتراحات مع كل حرف: كلمة كما في المصحف (يستفزونك)، أو جذرها (فزز)، أو سورة، أو موضعاً (17:64 أو الإسراء 64).</li><li>في صفحة الآية تحت الآية مباشرة أزرار: غريب الآية، ومعنى الكلمة (الراغب ومختار الصحاح والوصف الإعرابي)، والجلالين، والبيضاوي، والبغوي، وأسباب النزول، وإعراب العكبري. وانقر أي كلمة لمعناها ومواضع جذرها.</li></ul></section>' +
+        '<ul class="plain"><li>ابدأ الكتابة في مربع البحث فتظهر الاقتراحات مع كل حرف: كلمة كما في المصحف (يستفزونك)، أو جذرها (فزز)، أو سورة، أو موضعاً (17:64 أو الإسراء 64).</li><li>في صفحة الآية تحت الآية مباشرة أزرار: غريب الآية، ومعنى الكلمة (الراغب ومختار الصحاح والوصف الإعرابي)، والجلالين، والبيضاوي، والبغوي، وأسباب النزول، وإعراب العكبري، والترجمة الإنجليزية. وسهم الرجوع في أسفل الشاشة يعيدك إلى الموضع السابق. وانقر أي كلمة لمعناها ومواضع جذرها.</li></ul></section>' +
         '<section class="card"><h2>السور</h2><div class="grid">' + IDX.S.map(function (x, i) { return '<a href="#' + (i + 1) + ':1">' + an(i + 1) + '. ' + esc(x[0]) + ' <span>' + an(x[2]) + '</span></a>'; }).join('') + '</div></section>';
     }).catch(fail);
   }
 
   var V = null;   // current verse state
-  var TABS = [['gh', 'غريب الآية'], ['word', 'معنى الكلمة'], ['jal', 'الجلالين'], ['bay', 'البيضاوي'], ['bg', 'البغوي'], ['asb', 'أسباب النزول'], ['ub', 'إعراب العكبري']];
+  var TABS = [['gh', 'غريب الآية'], ['word', 'معنى الكلمة'], ['jal', 'الجلالين'], ['bay', 'البيضاوي'], ['bg', 'البغوي'], ['asb', 'أسباب النزول'], ['ub', 'إعراب العكبري'], ['en', 'English']];
   function verse(s, a, opt) {
     opt = opt || {};
     loadIdx().then(function () {
@@ -157,8 +173,8 @@
           '<section class="card"><div class="nav' + (opt.occ ? ' hidenav' : '') + '"><select id="ssel" aria-label="السورة">' + opts + '</select> <label>الآية <input id="asel" type="number" min="1" max="' + n + '" value="' + a + '"></label>' +
           (prev ? '<a class="btn ghost" href="' + prev + '">‹ السابقة</a>' : '') + (next ? '<a class="btn ghost" href="' + next + '">التالية ›</a>' : '') + '</div>' +
           '<div class="verse">' + words.map(function (w, i) { return '<button class="w' + (entriesKnown(w[1]) ? '' : ' nokey') + '" data-i="' + i + '">' + esc(w[0]) + '</button>'; }).join(' ') + ' <span class="aya-no">﴿' + an(a) + '﴾</span></div>' +
-          '<p class="muted small">' + esc(sname(s)) + '، الآية ' + an(a) + ' من ' + an(n) + (opt.occ ? ' — <a href="#' + s + ':' + a + '">فتح الآية وما حولها</a>' : '') + '. انقر كلمة لمعناها، أو اختر من الأزرار.</p>' +
-          '<div class="tabs vt" role="tablist">' + TABS.map(function (t) { return '<button role="tab" data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
+          '<p class="muted small">' + esc(sname(s)) + '، الآية ' + an(a) + ' من ' + an(n) + (opt.occ ? ' — <a href="#' + s + ':' + a + '">فتح الآية وما حولها</a>' : '') + '. انقر كلمة لمعناها، أو اختر من الأزرار.' + '</p>' +
+          '<div class="tabs vt" role="tablist">' + TABS.map(function (t) { return '<button role="tab" data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + (readingsLink(s, a) ? '<a class="xlink" href="' + readingsLink(s, a) + '" title="وجوه القراءات العشر في هذه الآية من أطلس القراءات">القراءات ↗</a>' : '') + '</div>' +
           '<div id="pane" role="tabpanel"></div></section>';
         document.getElementById('ssel').onchange = function () { location.hash = '#' + this.value + ':1'; };
         document.getElementById('asel').onchange = function () { location.hash = '#' + s + ':' + this.value; };
@@ -180,7 +196,7 @@
       (others ? '<p class="small muted">نتائج أخرى: ' + others + '</p>' : '') + '</section>';
   }
   function bindOcc(o) {
-    function goTo(j) { var x = o.list[j]; o.i = j; verse(x.s, x.a, { wi: x.w, key: o.key, tab: 'word', occ: o }); window.scrollTo(0, 0); }
+    function goTo(j) { var x = o.list[j]; o.i = j; try { history.replaceState(null, '', o.base + '~' + j); } catch (e) {} verse(x.s, x.a, { wi: x.w, key: o.key, tab: 'word', occ: o }); window.scrollTo(0, 0); }
     var p = document.getElementById('oprev'), nx = document.getElementById('onext');
     if (p) p.onclick = function () { if (o.i > 0) goTo(o.i - 1); };
     if (nx) nx.onclick = function () { if (o.i < o.list.length - 1) goTo(o.i + 1); };
@@ -195,8 +211,9 @@
   function refsOfForm(f) { return (FR[f] || '').split(',').filter(Boolean).map(function (r) { var m = r.match(/^(\d+):(\d+)\.(\d+)$/); return { s: +m[1], a: +m[2], w: +m[3] }; }); }
   function openOcc(q, how, key, list, others) {
     if (!list.length) return false;
-    var o = { q: q, how: how, key: key, list: list, i: 0, others: others };
-    verse(list[0].s, list[0].a, { wi: list[0].w, key: key, tab: 'word', occ: o });
+    var i0 = Math.min(Math.max(0, OCC0 || 0), list.length - 1); OCC0 = 0;
+    var o = { q: q, how: how, key: key, list: list, i: i0, others: others, base: location.hash.replace(/~\d+$/, '') };
+    verse(list[i0].s, list[i0].a, { wi: list[i0].w, key: key, tab: 'word', occ: o });
     return true;
   }
   function entriesKnown(key) { return key && entriesFor(key).length > 0; }
@@ -206,6 +223,7 @@
     var el = document.getElementById('pane'); el.className = t === 'bay' || t === 'bg' || t === 'ub' || t === 'asb' ? 'scroll' : ''; el.dataset.t = t; el.scrollTop = 0;
     if (t === 'gh') return ghPane(el);
     if (t === 'asb') return asbPane(el);
+    if (t === 'en') return enPane(el);
     if (t === 'ub') return ubPane(el);
     if (t === 'word') return wordPane(el);
     return tafsir(V.s, V.a, t, V.jal, el);
@@ -357,6 +375,7 @@
       '<li><strong>تفسير البيضاوي</strong> («أنوار التنزيل وأسرار التأويل»، ت 685هـ): من مدونة OpenITI بترخيص CC BY-NC-SA 4.0، وهي نسخة موقع altafsir.com المقسّمة على الآيات، بلا تشكيل ولا ترقيم صفحات ولا مقدمة المؤلف. قد يشمل الموضع الواحد عدة آيات، فتُظلَّل العبارات القرآنية التي تخص الآية المعروضة.</li>' +
       '<li><strong>تفسير البغوي</strong> («معالم التنزيل»، ت 516هـ): من مدونة OpenITI بترخيص CC BY-NC-SA 4.0، وهي نسخة موقع altafsir.com المقسّمة على الآيات، بلا تشكيل ولا ترقيم صفحات.</li>' +
       '<li><strong>«لباب النقول في أسباب النزول»</strong> للسيوطي (ت 911هـ): من مدونة OpenITI بترخيص CC BY-NC-SA 4.0 (نسخة ShamAY0034090). قُسّم على الآيات آلياً بمطابقة الألفاظ القرآنية التي يبدأ بها كل خبر، وتطابق ذلك في نحو 98% من الأخبار، فقد يقع خبر قليل في غير آيته. والكتاب يذكر الروايات بأسانيدها، ودرجتها تحتاج إلى مراجعة متخصص.</li>' +
+      '<li><strong>الترجمة الإنجليزية</strong>: ترجمة Saheeh International وترجمة Pickthall (1930) من Tanzil.net، تُعرضان دون تعديل للاستعمال غير التجاري، مع ذكر المصدر.</li>' +
       '<li><strong>«الميسر في غريب القرآن»</strong>: النص الرقمي من مجموعة QUL (Tarteel)، ولا تذكر المجموعة معلومات حقوقه، فيحتاج ترخيص نشره إلى تحقق من الناشر. حُوّلت علامات الرسم العثماني في الكلمات المشروحة إلى علامات الإملاء المعتاد ليُحسن عرضها.</li>' +
       '<li><strong>«مختار الصحاح»</strong> لزين الدين محمد بن أبي بكر الرازي (ت 666هـ)، تحقيق يوسف الشيخ محمد (المكتبة العصرية، ط5 1420هـ/1999م): من مدونة OpenITI بترخيص CC BY-NC-SA 4.0، وأرقام الصفحات من هذه الطبعة. رُبطت مداخله بالجذور آلياً، والمختار يتبع الجوهري في ردّ بعض الألفاظ إلى غير جذرها في مدونة ليدز، فقد يغيب المدخل عن كلمة.</li>' +
       '<li><strong>«التبيان في إعراب القرآن»</strong> لأبي البقاء العكبري (ت 616هـ)، تحقيق علي محمد البجاوي (عيسى البابي الحلبي): من مدونة OpenITI بترخيص CC BY-NC-SA 4.0. قُسّم النص على الآيات آلياً بأرقام الآيات التي يذكرها المحقق في رؤوس الفقرات ومطابقتها لنص الآية، وتحقق ذلك نصياً في نحو 97% من المواضع، فقد يقع موضع قليل في غير آيته.</li>' +
@@ -369,8 +388,10 @@
 
   function fail(e) { console.error(e); app.innerHTML = '<section class="card"><p>تعذّر تحميل البيانات. إن كنت تفتح الملف من جهازك مباشرة فشغّله عبر خادم ويب أو من GitHub Pages.</p><p class="muted small">' + esc(e && e.message || e) + '</p></section>'; }
 
+  var OCC0 = 0;
   function route() {
     var h = decodeURIComponent(location.hash.slice(1));
+    var om = h.match(/~(\d+)$/); if (om) { OCC0 = +om[1]; h = h.slice(0, -om[0].length); }
     var m = h.match(/^(\d{1,3}):(\d{1,3})$/);
     if (m && +m[1] >= 1 && +m[1] <= 114) return verse(+m[1], +m[2]);
     if (h.indexOf('r/') === 0) return rootView(h.slice(2));
@@ -432,6 +453,33 @@
     if (cur >= 0 && items[cur]) return go(items[cur].h);
     var v = qi.value.trim(); if (v) go('#w/' + encodeURIComponent(v));
   };
-  window.addEventListener('hashchange', function () { route(); window.scrollTo(0, 0); });
+  // ---------------- back arrow: return to the previous place and scroll position ----------------
+  var NAV = [], lastY = 0, backBtn = document.getElementById('backbtn');
+  window.addEventListener('scroll', function () { lastY = window.scrollY; }, { passive: true });
+  function showBack() { if (backBtn) backBtn.hidden = !NAV.length; }
+  function restoreScroll(y) {
+    var tries = 0;
+    (function f() { if (document.documentElement.scrollHeight - window.innerHeight >= y - 5 || tries > 40) window.scrollTo(0, y); else { tries++; setTimeout(f, 100); } })();
+  }
+  var prevHash = location.hash, prevY = 0;
+  window.addEventListener('hashchange', function (e) {
+    var h = location.hash, top = NAV[NAV.length - 1], old = e && e.oldURL && e.oldURL.indexOf('#') >= 0 ? e.oldURL.slice(e.oldURL.indexOf('#')) : prevHash;
+    if (top && top.h === h) { NAV.pop(); route(); restoreScroll(top.y); }
+    else { NAV.push({ h: old, y: prevY }); if (NAV.length > 60) NAV.shift(); route(); window.scrollTo(0, 0); }
+    prevHash = location.hash; showBack();
+  });
+  window.addEventListener('scroll', function () { prevY = window.scrollY; }, { passive: true });
+  if (backBtn) backBtn.onclick = function () {
+    var top = NAV[NAV.length - 1]; if (!top) return;
+    var target = top.h || '#';
+    if (target === location.hash || (target === '#' && !location.hash)) { NAV.pop(); route(); restoreScroll(top.y); showBack(); }
+    else location.hash = target;
+  };
+  // apps strip shared by the three sites
+  (function () {
+    var bar = document.getElementById('apps'); if (!bar) return;
+    var L = [['hypertext', 'الموسوعة القرآنية المترابطة', 'الموسوعة'], ['tafsir', 'المفردات والتفاسير', 'المفردات'], ['readings', 'أطلس القراءات العشر', 'الأطلس']];
+    bar.innerHTML = L.filter(function (x) { return SITES[x[0]]; }).map(function (x) { var t = '<span class="lg">' + x[1] + '</span><span class="sh">' + x[2] + '</span>'; return x[0] === 'tafsir' ? '<span class="cur" aria-current="page">' + t + '</span>' : '<a href="' + SITES[x[0]] + '">' + t + '</a>'; }).join('<i>·</i>');
+  })();
   route();
 })();

@@ -88,3 +88,21 @@ h3{margin-top:.4rem}
 .allocc .refs a.on{background:var(--sel);border-radius:4px;padding:0 .2rem}
 .nav.hidenav{display:none}
 .occ .nav{justify-content:space-between}
+
+.apps{background:var(--gold-ink);color:#fff;font-size:.82rem;padding:.15rem 16px;display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;line-height:1.8}
+.apps a{color:#fff;opacity:.85}
+.apps a:hover{opacity:1}
+.apps .cur{font-weight:700}
+.apps .sh{display:none}
+@media (max-width:600px){.apps .lg{display:none}.apps .sh{display:inline}}
+.apps i{opacity:.6;font-style:normal}
+.backbtn{position:fixed;bottom:18px;left:18px;z-index:40;width:48px;height:48px;border-radius:50%;border:none;background:var(--gold);color:#fff;font-size:1.5rem;line-height:1;box-shadow:0 6px 18px rgba(0,0,0,.25);cursor:pointer}
+.backbtn:hover{filter:brightness(1.08)}
+@media (max-width:600px){.backbtn{width:42px;height:42px;font-size:1.3rem;bottom:14px;left:14px;opacity:.92}}
+.entabs{display:flex;gap:.4rem;margin-bottom:.5rem}
+.entabs button{font:inherit;font-family:Georgia,'Times New Roman',serif;font-size:.85rem;padding:.1rem .7rem;border-radius:999px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer}
+.entabs button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold-ink);font-weight:700}
+p.en{font-family:Georgia,'Times New Roman',serif;font-size:1.1rem;line-height:1.8;text-align:left}
+.tabs a.xlink{font-size:1rem;padding:.2rem 1rem;border-radius:999px;border:1px dashed var(--gold);color:var(--gold-ink);text-decoration:none;white-space:nowrap}
+.tabs a.xlink:hover{background:var(--gold-soft)}
+@media (max-width:600px){.tabs a.xlink{font-size:.9rem;padding:.12rem .6rem}}
